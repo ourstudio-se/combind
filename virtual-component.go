@@ -1,15 +1,10 @@
-package model
+package combind
 
 import (
 	"context"
 	"math"
 	"sync"
 
-	"github.com/ourstudio-se/combind/persistence"
-
-	"github.com/ourstudio-se/combind/utils/arrayutils"
-	"github.com/ourstudio-se/combind/utils/keyutils"
-	"github.com/ourstudio-se/combind/utils/maputils"
 	"github.com/reveald/reveald"
 	log "github.com/sirupsen/logrus"
 )
@@ -20,22 +15,22 @@ type VirtualComponent struct {
 	dependencies  map[string]Component
 	rules         []Rule
 	noMappingRule Rule
-	result        []*persistence.SearchBox
+	result        []*SearchBox
 	maxNrMatches  int
 	props         map[string]interface{}
 	queryBuilder  QueryBuilder
 }
 
 type Combination struct {
-	Types   map[string]*persistence.SearchBox
-	Matches []persistence.Key
+	Types   map[string]*SearchBox
+	Matches []Key
 }
 
-// type Combination map[string]*persistence.SearchBox
+// type Combination map[string]*SearchBox
 
-type Rule func(combination *Combination) (*persistence.SearchBox, bool)
+type Rule func(combination *Combination) (*SearchBox, bool)
 
-type Combiner func(dependency map[string][]*persistence.SearchBox) chan *Combination
+type Combiner func(dependency map[string][]*SearchBox) chan *Combination
 
 type VirtualComponentConfiguration func(*VirtualComponent)
 
@@ -75,9 +70,9 @@ func WithQuery(queryBuilder QueryBuilder) VirtualComponentConfiguration {
 	}
 }
 
-func (vc *VirtualComponent) defaultNoMappingRule(combination *Combination) (*persistence.SearchBox, bool) {
+func (vc *VirtualComponent) defaultNoMappingRule(combination *Combination) (*SearchBox, bool) {
 
-	return &persistence.SearchBox{
+	return &SearchBox{
 		Key:     "not-mapped",
 		Type:    vc.typ,
 		Props:   map[string]interface{}{},
@@ -121,13 +116,13 @@ func (vc *VirtualComponent) Children() []Component {
 	return children
 }
 
-func (vc *VirtualComponent) Build(ctx context.Context, rebuild bool) ([]*persistence.SearchBox, error) {
+func (vc *VirtualComponent) Build(ctx context.Context, rebuild bool) ([]*SearchBox, error) {
 
 	if vc.result != nil && !rebuild {
 		return vc.result, nil
 	}
 
-	builtDependencies := map[string][]*persistence.SearchBox{}
+	builtDependencies := map[string][]*SearchBox{}
 	for typ, dependency := range vc.dependencies {
 		dependencyBuild, err := dependency.Build(ctx, false)
 		if err != nil {
@@ -136,7 +131,7 @@ func (vc *VirtualComponent) Build(ctx context.Context, rebuild bool) ([]*persist
 		builtDependencies[typ] = dependencyBuild
 	}
 
-	results := map[string]*persistence.SearchBox{}
+	results := map[string]*SearchBox{}
 	resultMutex := sync.RWMutex{}
 
 	mappedKeys := map[string]bool{}
@@ -157,7 +152,7 @@ func (vc *VirtualComponent) Build(ctx context.Context, rebuild bool) ([]*persist
 					continue
 				}
 
-				result.Props = maputils.Merge(vc.props, result.Props)
+				result.Props = Merge(vc.props, result.Props)
 
 				nrMatches = nrMatches + 1
 				resultMutex.Lock()
@@ -167,7 +162,7 @@ func (vc *VirtualComponent) Build(ctx context.Context, rebuild bool) ([]*persist
 				results[result.Key].Matches = append(results[result.Key].Matches, result.Matches...)
 
 				for _, k := range results[result.Key].Matches {
-					mappedKeys[keyutils.Hash(k)] = true
+					mappedKeys[Hash(k)] = true
 				}
 				resultMutex.Unlock()
 
@@ -201,15 +196,15 @@ func (vc *VirtualComponent) Build(ctx context.Context, rebuild bool) ([]*persist
 			log.Warnf("Default rule not matched, this must be an error. Check the default handler for type %s...", vc.typ)
 			continue
 		}
-		result.Props = maputils.Merge(vc.props, result.Props)
+		result.Props = Merge(vc.props, result.Props)
 
 		if _, ok := results[result.Key]; !ok {
 			results[result.Key] = result
 		}
 
-		ummappedKeys := []persistence.Key{}
+		ummappedKeys := []Key{}
 		for _, m := range result.Matches {
-			if _, ok := mappedKeys[keyutils.Hash(m)]; !ok {
+			if _, ok := mappedKeys[Hash(m)]; !ok {
 				ummappedKeys = append(ummappedKeys, m)
 			}
 		}
@@ -217,10 +212,10 @@ func (vc *VirtualComponent) Build(ctx context.Context, rebuild bool) ([]*persist
 		results[result.Key].Matches = append(results[result.Key].Matches, ummappedKeys...)
 	}
 
-	buildResults := []*persistence.SearchBox{}
+	buildResults := []*SearchBox{}
 
 	for _, c := range results {
-		c.Matches = arrayutils.DedupKeys(c.Matches)
+		c.Matches = DedupKeys(c.Matches)
 		buildResults = append(buildResults, c)
 	}
 

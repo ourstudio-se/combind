@@ -1,16 +1,13 @@
-package model
+package combind
 
 import (
 	"reflect"
 	"sync"
 
-	"github.com/ourstudio-se/combind/persistence"
-
-	"github.com/ourstudio-se/combind/utils/arrayutils"
 	log "github.com/sirupsen/logrus"
 )
 
-func DependencyMerge(results chan *Combination, dependencies ...[]*persistence.SearchBox) chan *Combination {
+func DependencyMerge(results chan *Combination, dependencies ...[]*SearchBox) chan *Combination {
 	if len(dependencies) == 0 {
 		return results
 	}
@@ -22,15 +19,15 @@ func DependencyMerge(results chan *Combination, dependencies ...[]*persistence.S
 			for r := range results {
 				for _, d := range dependencies[0] {
 					wg.Add(1)
-					go func(r *Combination, d *persistence.SearchBox) {
+					go func(r *Combination, d *SearchBox) {
 						defer wg.Done()
-						ts := map[string]*persistence.SearchBox{
+						ts := map[string]*SearchBox{
 							d.Type: d,
 						}
 						for _, t := range r.Types {
 							ts[t.Type] = t
 						}
-						matches := arrayutils.MergeArr(r.Matches, d.Matches)
+						matches := MergeArr(r.Matches, d.Matches)
 
 						if len(matches) == 0 {
 							return
@@ -56,14 +53,14 @@ func DependencyMerge(results chan *Combination, dependencies ...[]*persistence.S
 		for _, sbi := range dependencies[0] {
 			for _, sbj := range dependencies[1] {
 				wg.Add(1)
-				go func(sbi *persistence.SearchBox, sbj *persistence.SearchBox) {
+				go func(sbi *SearchBox, sbj *SearchBox) {
 					defer wg.Done()
 					theseResults <- &Combination{
-						Types: map[string]*persistence.SearchBox{
+						Types: map[string]*SearchBox{
 							sbi.Type: sbi,
 							sbj.Type: sbj,
 						},
-						Matches: arrayutils.MergeArr(sbi.Matches, sbj.Matches),
+						Matches: MergeArr(sbi.Matches, sbj.Matches),
 					}
 				}(sbi, sbj)
 			}
@@ -88,7 +85,7 @@ func DependencyMerge(results chan *Combination, dependencies ...[]*persistence.S
 			count++
 			tResults <- tr
 			for pr := range results {
-				types := map[string]*persistence.SearchBox{}
+				types := map[string]*SearchBox{}
 				for k, v := range tr.Types {
 					types[k] = v
 				}
@@ -97,7 +94,7 @@ func DependencyMerge(results chan *Combination, dependencies ...[]*persistence.S
 				}
 				newResults <- &Combination{
 					Types:   types,
-					Matches: arrayutils.MergeArr(tr.Matches, pr.Matches),
+					Matches: MergeArr(tr.Matches, pr.Matches),
 				}
 			}
 		}
@@ -109,7 +106,7 @@ func DependencyMerge(results chan *Combination, dependencies ...[]*persistence.S
 	return DependencyMerge(newResults, dependencies[2:]...)
 }
 
-func MutuallyExclusive(dependencies ...[]*persistence.SearchBox) bool {
+func MutuallyExclusive(dependencies ...[]*SearchBox) bool {
 	exists := make(map[string]bool)
 
 	for _, dependency := range dependencies {
@@ -126,18 +123,18 @@ func MutuallyExclusive(dependencies ...[]*persistence.SearchBox) bool {
 	return true
 }
 
-func recursiveComb(op persistence.SearchBox, ch chan Combination, dep2 ...[]*persistence.SearchBox) {}
+func recursiveComb(op SearchBox, ch chan Combination, dep2 ...[]*SearchBox) {}
 
-func createMECombinations(op persistence.SearchBox, ch chan Combination, dep2 ...[]*persistence.SearchBox) {
+func createMECombinations(op SearchBox, ch chan Combination, dep2 ...[]*SearchBox) {
 
 	keys := op.Matches
-	types1 := map[string]*persistence.SearchBox{}
+	types1 := map[string]*SearchBox{}
 	types1[op.Type] = &op
 
 	if len(dep2) == 1 {
 		for _, t2 := range dep2 {
 			for _, t3 := range t2 {
-				keys = arrayutils.MergeArr(keys, t3.Matches)
+				keys = MergeArr(keys, t3.Matches)
 				types1[t3.Type] = t3
 			}
 		}
@@ -148,13 +145,13 @@ func createMECombinations(op persistence.SearchBox, ch chan Combination, dep2 ..
 	}
 	if len(dep2) == 2 {
 		for _, t2 := range dep2[0] {
-			types := map[string]*persistence.SearchBox{}
+			types := map[string]*SearchBox{}
 			types[op.Type] = &op
 			t2cop := &t2
-			innerKeys := arrayutils.MergeArr(keys, t2.Matches)
+			innerKeys := MergeArr(keys, t2.Matches)
 			types[t2.Type] = *t2cop
 			for _, t3 := range dep2[1] {
-				k := arrayutils.MergeArr(innerKeys, t3.Matches)
+				k := MergeArr(innerKeys, t3.Matches)
 				t3cop := &t3
 				types[t3.Type] = *t3cop
 				ch <- Combination{
@@ -173,17 +170,17 @@ func createMECombinations(op persistence.SearchBox, ch chan Combination, dep2 ..
 
 }
 
-func createNonMECombinations(op persistence.SearchBox, ch chan Combination, dep2 ...[]*persistence.SearchBox) {
+func createNonMECombinations(op SearchBox, ch chan Combination, dep2 ...[]*SearchBox) {
 
 	keys := op.Matches
 
-	types := map[string]*persistence.SearchBox{}
+	types := map[string]*SearchBox{}
 
 	types[op.Type] = &op
 
 	for _, t2 := range dep2 {
 		for _, t3 := range t2 {
-			keys = arrayutils.IntersectArr(keys, t3.Matches)
+			keys = IntersectArr(keys, t3.Matches)
 			types[t3.Type] = t3
 		}
 
@@ -195,7 +192,7 @@ func createNonMECombinations(op persistence.SearchBox, ch chan Combination, dep2
 
 }
 
-func Dependencies(mat persistence.Key) []string {
+func Dependencies(mat Key) []string {
 	result := []string{}
 
 	val := reflect.ValueOf(mat)

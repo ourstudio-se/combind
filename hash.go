@@ -1,4 +1,4 @@
-package keyutils
+package combind
 
 import (
 	"crypto/md5"

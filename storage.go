@@ -1,4 +1,4 @@
-package persistence
+package combind
 
 import (
 	"context"
@@ -13,12 +13,12 @@ type SearchBoxStorage interface {
 
 //ComponentStorage interface
 type ComponentStorage interface {
-	Find(ctx context.Context, componentType string) ([]Component, error)
-	Save(ctx context.Context, c ...*Component) error
+	Find(ctx context.Context, componentType string) ([]BackendComponent, error)
+	Save(ctx context.Context, c ...*BackendComponent) error
 }
 
-// Component ...
-type Component struct {
+// BackendComponent ...
+type BackendComponent struct {
 	Code     string                 `json:"code"`
 	Type     string                 `json:"type"`
 	Name     string                 `json:"name"`

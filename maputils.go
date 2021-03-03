@@ -1,4 +1,4 @@
-package maputils
+package combind
 
 func Merge(m1, m2 map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{})

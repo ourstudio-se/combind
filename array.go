@@ -1,15 +1,12 @@
-package arrayutils
+package combind
 
 import (
 	"encoding/json"
 	"sync"
-
-	"github.com/ourstudio-se/combind/persistence"
-	"github.com/ourstudio-se/combind/utils/keyutils"
 )
 
-func MergeArr(m1 []persistence.Key, m2 []persistence.Key) []persistence.Key {
-	result := []persistence.Key{}
+func MergeArr(m1 []Key, m2 []Key) []Key {
+	result := []Key{}
 
 	for _, mv1 := range m1 {
 		for _, mv2 := range m2 {
@@ -25,35 +22,35 @@ func MergeArr(m1 []persistence.Key, m2 []persistence.Key) []persistence.Key {
 	return DedupKeys(result)
 }
 
-func MergeKey(m1 persistence.Key, m2 persistence.Key) (persistence.Key, bool) {
+func MergeKey(m1 Key, m2 Key) (Key, bool) {
 
 	b1, err := json.Marshal(m1)
 	if err != nil {
-		return persistence.Key{}, false
+		return Key{}, false
 	}
 	b2, err := json.Marshal(m2)
 	if err != nil {
-		return persistence.Key{}, false
+		return Key{}, false
 	}
 
 	m1Map := map[string]string{}
 	m2Map := map[string]string{}
 
 	if err := json.Unmarshal(b1, &m1Map); err != nil {
-		return persistence.Key{}, false
+		return Key{}, false
 	}
 	if err := json.Unmarshal(b2, &m2Map); err != nil {
-		return persistence.Key{}, false
+		return Key{}, false
 	}
 
 	for k, v1 := range m1Map {
 		if v2, ok := m2Map[k]; ok && v1 != v2 {
-			return persistence.Key{}, false
+			return Key{}, false
 		}
 	}
 	for k, v2 := range m2Map {
 		if v1, ok := m1Map[k]; ok && v1 != v2 {
-			return persistence.Key{}, false
+			return Key{}, false
 		}
 	}
 
@@ -61,25 +58,25 @@ func MergeKey(m1 persistence.Key, m2 persistence.Key) (persistence.Key, bool) {
 		m1Map[k] = v2
 	}
 
-	var resultKey persistence.Key
+	var resultKey Key
 	rb, err := json.Marshal(m1Map)
 	if err != nil {
-		return persistence.Key{}, false
+		return Key{}, false
 	}
 
 	if err := json.Unmarshal(rb, &resultKey); err != nil {
-		return persistence.Key{}, false
+		return Key{}, false
 	}
 
 	return resultKey, true
 }
 
-func DedupKeys(d []persistence.Key) []persistence.Key {
+func DedupKeys(d []Key) []Key {
 	dedupMatches := map[string]map[string]string{}
 	for _, match := range d {
-		dedupMatches[keyutils.Hash(match)] = match
+		dedupMatches[Hash(match)] = match
 	}
-	matches := []persistence.Key{}
+	matches := []Key{}
 	for _, key := range dedupMatches {
 		matches = append(matches, key)
 	}
@@ -88,19 +85,19 @@ func DedupKeys(d []persistence.Key) []persistence.Key {
 }
 
 type SafeArray struct {
-	v   []persistence.Key
+	v   []Key
 	mux sync.Mutex
 }
 
 // IntersectArr Merges list of keys only if they share they same property on the key they av in common
-func IntersectArr(a []persistence.Key, b []persistence.Key) []persistence.Key {
-	//c := []persistence.Key{}
-	combinations := make(chan persistence.Key, len(a))
+func IntersectArr(a []Key, b []Key) []Key {
+	//c := []Key{}
+	combinations := make(chan Key, len(a))
 	var wg sync.WaitGroup
 
 	for _, item1 := range a {
 		wg.Add(1)
-		go func(item1 persistence.Key) {
+		go func(item1 Key) {
 			defer wg.Done()
 			for _, item2 := range b {
 
@@ -132,7 +129,7 @@ func IntersectArr(a []persistence.Key, b []persistence.Key) []persistence.Key {
 		close(combinations)
 	}()
 
-	result := []persistence.Key{}
+	result := []Key{}
 	for c := range combinations {
 		result = append(result, c)
 	}

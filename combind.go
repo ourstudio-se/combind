@@ -5,36 +5,33 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/ourstudio-se/combind/model"
-	"github.com/ourstudio-se/combind/persistence"
 	"github.com/reveald/reveald"
 	log "github.com/sirupsen/logrus"
 )
 
-//Combiner for the current relationships
-type Combiner struct {
-	components       map[string]model.Component
-	componentStorage persistence.ComponentStorage
-	metadataStorage  persistence.SearchBoxStorage
+//Combind for the current relationships
+type Combind struct {
+	components       map[string]Component
+	componentStorage ComponentStorage
+	metadataStorage  SearchBoxStorage
 	roots            map[string][]string
-	// eventstream      eventstream.KafkaEventWriter
 }
 
 type CombinerBuilder interface {
-	Update(ctx context.Context, comp ...*persistence.Component) ([]*persistence.SearchBox, error)
-	Save(ctx context.Context) ([]*persistence.SearchBox, error)
+	Update(ctx context.Context, comp ...*Component) ([]*SearchBox, error)
+	Save(ctx context.Context) ([]*SearchBox, error)
 }
 
 // New for modeling the metadata
 func New(
-	componentStorage persistence.ComponentStorage,
-	combindStorage persistence.SearchBoxStorage,
-	components ...model.Component) *Combiner {
+	componentStorage ComponentStorage,
+	combindStorage SearchBoxStorage,
+	components ...Component) *Combind {
 
-	g := &Combiner{
+	g := &Combind{
 		componentStorage: componentStorage,
 		metadataStorage:  combindStorage,
-		components:       map[string]model.Component{},
+		components:       map[string]Component{},
 		roots:            map[string][]string{},
 	}
 
@@ -48,7 +45,7 @@ func New(
 	return g
 }
 
-func (g *Combiner) ComponentTypes() []string {
+func (g *Combind) ComponentTypes() []string {
 	res := []string{}
 	for _, c := range g.components {
 		res = append(res, c.Type())
@@ -58,7 +55,7 @@ func (g *Combiner) ComponentTypes() []string {
 }
 
 //Save the graph to the provided storage
-func (g *Combiner) Save(ctx context.Context) ([]*persistence.SearchBox, error) {
+func (g *Combind) Save(ctx context.Context) ([]*SearchBox, error) {
 
 	logTime := func(part string, start time.Time) {
 		end := time.Now()
@@ -66,7 +63,7 @@ func (g *Combiner) Save(ctx context.Context) ([]*persistence.SearchBox, error) {
 	}
 
 	defer logTime("Total runtime", time.Now())
-	results := []*persistence.SearchBox{}
+	results := []*SearchBox{}
 	for typ, comp := range g.components {
 		start := time.Now()
 		log.Debugf("Running %s", typ)
@@ -82,10 +79,10 @@ func (g *Combiner) Save(ctx context.Context) ([]*persistence.SearchBox, error) {
 }
 
 // Update recomputes the updates for the graph
-func (combiner *Combiner) Update(ctx context.Context, comps ...*persistence.Component) ([]*persistence.SearchBox, error) {
-	deletedBoxes := []*persistence.SearchBox{}
-	updatedBoxes := []*persistence.SearchBox{}
-	createdBoxes := []*persistence.SearchBox{}
+func (combiner *Combind) Update(ctx context.Context, comps ...*BackendComponent) ([]*SearchBox, error) {
+	deletedBoxes := []*SearchBox{}
+	updatedBoxes := []*SearchBox{}
+	createdBoxes := []*SearchBox{}
 
 	for key, component := range combiner.components {
 		roots := getComponentRoots(component)
@@ -103,8 +100,8 @@ func (combiner *Combiner) Update(ctx context.Context, comps ...*persistence.Comp
 						return nil, err
 					}
 
-					builtIndex := map[string]*persistence.SearchBox{}
-					existingIndex := map[string]*persistence.SearchBox{}
+					builtIndex := map[string]*SearchBox{}
+					existingIndex := map[string]*SearchBox{}
 
 					for _, builtBox := range builds {
 						builtIndex[builtBox.Key] = builtBox
@@ -135,15 +132,15 @@ func (combiner *Combiner) Update(ctx context.Context, comps ...*persistence.Comp
 	return append(updatedBoxes, createdBoxes...), nil
 }
 
-func getComponentRoots(comp model.Component) []string {
+func getComponentRoots(comp Component) []string {
 
-	if _, ok := comp.(*model.RootComponent); ok {
+	if _, ok := comp.(*RootComponent); ok {
 		return []string{comp.Type()}
 	}
 
 	roots := []string{}
 	for _, c := range comp.Children() {
-		if root, ok := c.(*model.RootComponent); ok {
+		if root, ok := c.(*RootComponent); ok {
 			roots = append(roots, root.Type())
 		} else {
 			roots = append(roots, getComponentRoots(c)...)
@@ -151,7 +148,7 @@ func getComponentRoots(comp model.Component) []string {
 	}
 
 	removeDuplicates := func(keys []string) []string {
-		dedup := map[string]model.Component{}
+		dedup := map[string]Component{}
 		result := []string{}
 		for _, k := range keys {
 			if _, ok := dedup[k]; !ok {
@@ -166,11 +163,11 @@ func getComponentRoots(comp model.Component) []string {
 	return removeDuplicates(roots)
 }
 
-func (combiner *Combiner) Name() string {
+func (combiner *Combind) Name() string {
 	return "Graph"
 }
 
-func (combiner *Combiner) Process(builder *reveald.QueryBuilder, next reveald.FeatureFunc) (*reveald.Result, error) {
+func (combiner *Combind) Process(builder *reveald.QueryBuilder, next reveald.FeatureFunc) (*reveald.Result, error) {
 
 	for _, c := range combiner.components {
 		c.BuildQuery(builder)
@@ -185,6 +182,6 @@ func (combiner *Combiner) Process(builder *reveald.QueryBuilder, next reveald.Fe
 	return combiner.handle(r)
 }
 
-func (combiner *Combiner) handle(result *reveald.Result) (*reveald.Result, error) {
+func (combiner *Combind) handle(result *reveald.Result) (*reveald.Result, error) {
 	return result, nil
 }

@@ -1,9 +1,7 @@
-package model
+package combind
 
 import (
 	"context"
-
-	"github.com/ourstudio-se/combind/persistence"
 
 	"github.com/reveald/reveald"
 )
@@ -13,10 +11,10 @@ type QueryBuilder = func(builder *reveald.QueryBuilder)
 type Component interface {
 	Type() string
 	Children() []Component
-	Build(ctx context.Context, rebuild bool) ([]*persistence.SearchBox, error)
+	Build(ctx context.Context, rebuild bool) ([]*SearchBox, error)
 	BuildQuery(builder *reveald.QueryBuilder)
 }
 
 type SearchableComponent interface {
-	Find(context.Context, persistence.Key) (*persistence.SearchBox, error)
+	Find(context.Context, Key) (*SearchBox, error)
 }

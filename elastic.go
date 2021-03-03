@@ -1,4 +1,4 @@
-package backend
+package combind
 
 import (
 	"context"
@@ -9,8 +9,6 @@ import (
 
 	"github.com/olivere/elastic/v7"
 
-	"github.com/ourstudio-se/combind/persistence"
-	"github.com/ourstudio-se/combind/utils/keyutils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -19,7 +17,7 @@ type elasticSearchBoxStorage struct {
 	searchIndex string
 }
 
-func NewElasticSearchBoxStorage(client *elastic.Client, metaIndex string) persistence.SearchBoxStorage {
+func NewElasticSearchBoxStorage(client *elastic.Client, metaIndex string) SearchBoxStorage {
 	return &elasticSearchBoxStorage{
 		client:      client,
 		searchIndex: metaIndex,
@@ -70,20 +68,20 @@ func (s *elasticSearchBoxStorage) Init(ctx context.Context) error {
 	return nil
 }
 
-func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string) ([]persistence.SearchBox, error) {
+func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string) ([]SearchBox, error) {
 
-	results := []persistence.SearchBox{}
+	results := []SearchBox{}
 	for s := range scroll(s.client, ctx, s.searchIndex, boxType) {
-		var typ persistence.Component
+		var typ Component
 		for _, h := range s.Each(reflect.TypeOf(typ)) {
-			results = append(results, h.(persistence.SearchBox))
+			results = append(results, h.(SearchBox))
 		}
 	}
 
 	return results, nil
 }
 
-func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*persistence.SearchBox) error {
+func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) error {
 	start := time.Now()
 	defer func() {
 		log.Debugf("indexing took %s ", time.Since(start))
@@ -112,9 +110,9 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*persistence.S
 	for _, d := range sb {
 		for _, key := range d.Matches {
 			dCopy := *d
-			dCopy.HashMatch = keyutils.Hash(key)
+			dCopy.HashMatch = Hash(key)
 			dCopy.Match = key
-			dCopy.Matches = []persistence.Key{}
+			dCopy.Matches = []Key{}
 			req := elastic.NewBulkIndexRequest().Index(originIdx).Id(fmt.Sprintf("%s_%s_%s", d.Type, d.Key, dCopy.HashMatch)).Doc(dCopy)
 			bp.Add(req)
 			indexed++
@@ -168,27 +166,27 @@ type elasticComponentStorage struct {
 	componentIndex string
 }
 
-func NewElasticComponentStorage(client *elastic.Client, componentIndex string) persistence.ComponentStorage {
+func NewElasticComponentStorage(client *elastic.Client, componentIndex string) ComponentStorage {
 	return &elasticComponentStorage{
 		client:         client,
 		componentIndex: componentIndex,
 	}
 }
 
-func (s *elasticComponentStorage) Find(ctx context.Context, componentType string) ([]persistence.Component, error) {
+func (s *elasticComponentStorage) Find(ctx context.Context, componentType string) ([]BackendComponent, error) {
 
-	results := []persistence.Component{}
+	results := []BackendComponent{}
 	for s := range scroll(s.client, ctx, s.componentIndex, componentType) {
-		var typ persistence.Component
+		var typ Component
 		for _, h := range s.Each(reflect.TypeOf(typ)) {
-			results = append(results, h.(persistence.Component))
+			results = append(results, h.(BackendComponent))
 		}
 	}
 
 	return results, nil
 }
 
-func (s *elasticComponentStorage) Save(ctx context.Context, c ...*persistence.Component) error {
+func (s *elasticComponentStorage) Save(ctx context.Context, c ...*BackendComponent) error {
 	bp, err := elastic.NewBulkProcessorService(s.client).Do(ctx)
 	defer bp.Close()
 	if err != nil {

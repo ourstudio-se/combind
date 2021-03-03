@@ -1,24 +1,22 @@
-package model
+package combind
 
 import (
 	"context"
 	"encoding/json"
 	"log"
 
-	"github.com/ourstudio-se/combind/persistence"
-	"github.com/ourstudio-se/combind/utils/arrayutils"
 	"github.com/reveald/reveald"
 )
 
-type Modifier func(*persistence.SearchBox)
+type Modifier func(*SearchBox)
 
-type ResultModifier func([]*persistence.SearchBox)
+type ResultModifier func([]*SearchBox)
 
 type RootComponent struct {
-	storage         persistence.ComponentStorage
+	storage         ComponentStorage
 	typ             string
 	KeyType         string
-	build           []*persistence.SearchBox
+	build           []*SearchBox
 	modifiers       []Modifier
 	resultModifiers []ResultModifier
 	queryBuilder    QueryBuilder
@@ -44,7 +42,7 @@ func WithRootQuery(queryBuilder QueryBuilder) RootConfiguration {
 	}
 }
 
-func NewRoot(typ string, storage persistence.ComponentStorage, config ...RootConfiguration) *RootComponent {
+func NewRoot(typ string, storage ComponentStorage, config ...RootConfiguration) *RootComponent {
 	rc := &RootComponent{
 		storage:   storage,
 		typ:       typ,
@@ -70,7 +68,7 @@ func (rc *RootComponent) Children() []Component {
 	return []Component{}
 }
 
-func (rc *RootComponent) Build(ctx context.Context, rebuild bool) ([]*persistence.SearchBox, error) {
+func (rc *RootComponent) Build(ctx context.Context, rebuild bool) ([]*SearchBox, error) {
 
 	if rc.build != nil && !rebuild {
 		return rc.build, nil
@@ -81,10 +79,10 @@ func (rc *RootComponent) Build(ctx context.Context, rebuild bool) ([]*persistenc
 		return nil, err
 	}
 
-	addOrUpdate := []*persistence.SearchBox{}
+	addOrUpdate := []*SearchBox{}
 
 	for _, value := range values {
-		k := persistence.Key{}
+		k := Key{}
 
 		b, err := json.Marshal(map[string]string{
 			rc.KeyType: value.Code,
@@ -98,13 +96,13 @@ func (rc *RootComponent) Build(ctx context.Context, rebuild bool) ([]*persistenc
 			log.Fatalf("Could not unmarshal %s", b)
 		}
 
-		sb := &persistence.SearchBox{
+		sb := &SearchBox{
 			Type: rc.typ,
 			Key:  value.Code,
 			Props: merge(map[string]interface{}{
 				"name": value.Name,
 			}, value.Props),
-			Matches: []persistence.Key{k},
+			Matches: []Key{k},
 		}
 
 		for _, modifier := range rc.modifiers {
@@ -114,7 +112,7 @@ func (rc *RootComponent) Build(ctx context.Context, rebuild bool) ([]*persistenc
 		addOrUpdate = append(addOrUpdate, sb)
 	}
 	for _, c := range addOrUpdate {
-		c.Matches = arrayutils.DedupKeys(c.Matches)
+		c.Matches = DedupKeys(c.Matches)
 	}
 	rc.build = addOrUpdate
 	for _, rm := range rc.resultModifiers {
