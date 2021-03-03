@@ -1,12 +1,15 @@
-package persistence
+package backend
 
 import (
 	"context"
 	"fmt"
+	"io"
 	"reflect"
 	"time"
 
 	"github.com/olivere/elastic/v7"
+
+	"github.com/ourstudio-se/combind/persistence"
 	"github.com/ourstudio-se/combind/utils/keyutils"
 	log "github.com/sirupsen/logrus"
 )
@@ -16,7 +19,7 @@ type elasticSearchBoxStorage struct {
 	searchIndex string
 }
 
-func NewElasticSearchBoxStorage(client *elastic.Client, metaIndex string) SearchBoxStorage {
+func NewElasticSearchBoxStorage(client *elastic.Client, metaIndex string) persistence.SearchBoxStorage {
 	return &elasticSearchBoxStorage{
 		client:      client,
 		searchIndex: metaIndex,
@@ -67,28 +70,20 @@ func (s *elasticSearchBoxStorage) Init(ctx context.Context) error {
 	return nil
 }
 
-func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string) ([]SearchBox, error) {
-	result, err := s.client.Search(s.searchIndex).Query(elastic.NewBoolQuery().Must(
-		elastic.NewMatchQuery("type.keyword", boxType),
-	)).Size(1000).Do(ctx)
+func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string) ([]persistence.SearchBox, error) {
 
-	if err != nil {
-		return nil, err
-	}
-
-	values := []SearchBox{}
-
-	var typ Component
-	for _, sh := range result.Each(reflect.TypeOf(typ)) {
-		if v, ok := sh.(SearchBox); ok {
-			values = append(values, v)
+	results := []persistence.SearchBox{}
+	for s := range scroll(s.client, ctx, s.searchIndex, boxType) {
+		var typ persistence.Component
+		for _, h := range s.Each(reflect.TypeOf(typ)) {
+			results = append(results, h.(persistence.SearchBox))
 		}
 	}
 
-	return values, nil
+	return results, nil
 }
 
-func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) error {
+func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*persistence.SearchBox) error {
 	start := time.Now()
 	defer func() {
 		log.Debugf("indexing took %s ", time.Since(start))
@@ -119,7 +114,7 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 			dCopy := *d
 			dCopy.HashMatch = keyutils.Hash(key)
 			dCopy.Match = key
-			dCopy.Matches = []Key{}
+			dCopy.Matches = []persistence.Key{}
 			req := elastic.NewBulkIndexRequest().Index(originIdx).Id(fmt.Sprintf("%s_%s_%s", d.Type, d.Key, dCopy.HashMatch)).Doc(dCopy)
 			bp.Add(req)
 			indexed++
@@ -133,14 +128,9 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 		return err
 	}
 
-	count, err := s.client.Count(originIdx).Do(ctx)
-	if err != nil {
-		log.Warn(err)
-	}
-
 	statsIndexed := bp.Stats().Indexed
-	if statsIndexed != int64(indexed) {
-		log.Errorf("Expected %d documents, but count returned %d", count, bp.Stats().Indexed)
+	if statsIndexed != indexed {
+		log.Errorf("Expected %d documents, but count returned %d", indexed, statsIndexed)
 		s.client.DeleteIndex(originIdx).Do(ctx)
 		return fmt.Errorf("Wrong number of documents indexed")
 	}
@@ -171,4 +161,68 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 	}
 
 	return nil
+}
+
+type elasticComponentStorage struct {
+	client         *elastic.Client
+	componentIndex string
+}
+
+func NewElasticComponentStorage(client *elastic.Client, componentIndex string) persistence.ComponentStorage {
+	return &elasticComponentStorage{
+		client:         client,
+		componentIndex: componentIndex,
+	}
+}
+
+func (s *elasticComponentStorage) Find(ctx context.Context, componentType string) ([]persistence.Component, error) {
+
+	results := []persistence.Component{}
+	for s := range scroll(s.client, ctx, s.componentIndex, componentType) {
+		var typ persistence.Component
+		for _, h := range s.Each(reflect.TypeOf(typ)) {
+			results = append(results, h.(persistence.Component))
+		}
+	}
+
+	return results, nil
+}
+
+func (s *elasticComponentStorage) Save(ctx context.Context, c ...*persistence.Component) error {
+	bp, err := elastic.NewBulkProcessorService(s.client).Do(ctx)
+	defer bp.Close()
+	if err != nil {
+		log.Error("Failed to create bulkprocessor")
+	}
+
+	for _, d := range c {
+		req := elastic.NewBulkIndexRequest().Index(s.componentIndex).Id(fmt.Sprintf("%s_%s", d.Type, d.Code)).Doc(d)
+		bp.Add(req)
+	}
+
+	return bp.Flush()
+}
+
+func scroll(client *elastic.Client, ctx context.Context, typ, index string) chan *elastic.SearchResult {
+	scroller := client.Scroll(index).Size(1000).Query(elastic.NewBoolQuery().Must(
+		elastic.NewMatchQuery("type.keyword", typ),
+	))
+
+	results := make(chan *elastic.SearchResult)
+	go func() {
+		defer close(results)
+		for {
+			r, err := scroller.Do(ctx)
+			if err == io.EOF {
+				//done
+				return
+			}
+			if err != nil {
+				log.Warnf("Error while scrolling %v", err)
+				return
+			}
+			results <- r
+		}
+	}()
+	return results
 }
