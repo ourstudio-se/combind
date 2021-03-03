@@ -42,5 +42,5 @@ type SearchBox struct {
 	Props     map[string]interface{} `json:"props"`
 	Match     Key                    `json:"match"`
 	HashMatch string                 `json:"hash_match"`
-	Matches   []Key
+	Matches   []Key                  `json:"-"`
 }
