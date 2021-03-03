@@ -5,6 +5,7 @@ import (
 	"sync"
 
 	"github.com/ourstudio-se/combind/persistence"
+	"github.com/ourstudio-se/combind/utils/keyutils"
 )
 
 func MergeArr(m1 []persistence.Key, m2 []persistence.Key) []persistence.Key {
@@ -74,12 +75,12 @@ func MergeKey(m1 persistence.Key, m2 persistence.Key) (persistence.Key, bool) {
 }
 
 func DedupKeys(d []persistence.Key) []persistence.Key {
-	dedupMatches := map[persistence.Key]bool{}
+	dedupMatches := map[string]map[string]string{}
 	for _, match := range d {
-		dedupMatches[match] = true
+		dedupMatches[keyutils.Hash(match)] = match
 	}
 	matches := []persistence.Key{}
-	for key := range dedupMatches {
+	for _, key := range dedupMatches {
 		matches = append(matches, key)
 	}
 
@@ -106,14 +107,15 @@ func IntersectArr(a []persistence.Key, b []persistence.Key) []persistence.Key {
 				// If keys are not shared, do not merge
 
 				match := false
-				if item1.Week == item2.Week && item1.Week != "" {
-					match = true
-				} else if item1.Pno12 == item2.Pno12 && item1.Pno12 != "" {
-					match = true
-				} else if item1.Policy == item2.Policy && item1.Policy != "" {
-					match = true
-				} else if item1.SpecMarket == item2.SpecMarket && item1.SpecMarket != "" {
-					match = true
+				for k1, v1 := range item1 {
+					for k2, v2 := range item2 {
+						if k1 != k2 {
+							continue
+						}
+						if v1 != "" && v1 == v2 {
+							match = true
+						}
+					}
 				}
 
 				if match == true {

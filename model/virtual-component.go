@@ -8,6 +8,7 @@ import (
 	"github.com/ourstudio-se/combind/persistence"
 
 	"github.com/ourstudio-se/combind/utils/arrayutils"
+	"github.com/ourstudio-se/combind/utils/keyutils"
 	"github.com/ourstudio-se/combind/utils/maputils"
 	"github.com/reveald/reveald"
 	log "github.com/sirupsen/logrus"
@@ -120,15 +121,15 @@ func (vc *VirtualComponent) Children() []Component {
 	return children
 }
 
-func (vc *VirtualComponent) Build(ctx context.Context) ([]*persistence.SearchBox, error) {
+func (vc *VirtualComponent) Build(ctx context.Context, rebuild bool) ([]*persistence.SearchBox, error) {
 
-	if vc.result != nil {
+	if vc.result != nil && !rebuild {
 		return vc.result, nil
 	}
 
 	builtDependencies := map[string][]*persistence.SearchBox{}
 	for typ, dependency := range vc.dependencies {
-		dependencyBuild, err := dependency.Build(ctx)
+		dependencyBuild, err := dependency.Build(ctx, false)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +139,7 @@ func (vc *VirtualComponent) Build(ctx context.Context) ([]*persistence.SearchBox
 	results := map[string]*persistence.SearchBox{}
 	resultMutex := sync.RWMutex{}
 
-	mappedKeys := map[persistence.Key]bool{}
+	mappedKeys := map[string]bool{}
 	unmatchedCombinations := []*Combination{}
 	unmatchedLock := sync.RWMutex{}
 	counter := 0
@@ -166,7 +167,7 @@ func (vc *VirtualComponent) Build(ctx context.Context) ([]*persistence.SearchBox
 				results[result.Key].Matches = append(results[result.Key].Matches, result.Matches...)
 
 				for _, k := range results[result.Key].Matches {
-					mappedKeys[k] = true
+					mappedKeys[keyutils.Hash(k)] = true
 				}
 				resultMutex.Unlock()
 
@@ -208,7 +209,7 @@ func (vc *VirtualComponent) Build(ctx context.Context) ([]*persistence.SearchBox
 
 		ummappedKeys := []persistence.Key{}
 		for _, m := range result.Matches {
-			if _, ok := mappedKeys[m]; !ok {
+			if _, ok := mappedKeys[keyutils.Hash(m)]; !ok {
 				ummappedKeys = append(ummappedKeys, m)
 			}
 		}

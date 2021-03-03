@@ -70,7 +70,7 @@ func (g *Combiner) Save(ctx context.Context) ([]*persistence.SearchBox, error) {
 	for typ, comp := range g.components {
 		start := time.Now()
 		log.Debugf("Running %s", typ)
-		result, err := comp.Build(ctx)
+		result, err := comp.Build(ctx, true)
 		if err != nil {
 			return nil, err
 		}
@@ -98,7 +98,7 @@ func (combiner *Combiner) Update(ctx context.Context, comps ...*persistence.Comp
 					if err != nil {
 						return nil, err
 					}
-					builds, err := component.Build(ctx)
+					builds, err := component.Build(ctx, true)
 					if err != nil {
 						return nil, err
 					}

@@ -70,9 +70,9 @@ func (rc *RootComponent) Children() []Component {
 	return []Component{}
 }
 
-func (rc *RootComponent) Build(ctx context.Context) ([]*persistence.SearchBox, error) {
+func (rc *RootComponent) Build(ctx context.Context, rebuild bool) ([]*persistence.SearchBox, error) {
 
-	if rc.build != nil {
+	if rc.build != nil && !rebuild {
 		return rc.build, nil
 	}
 

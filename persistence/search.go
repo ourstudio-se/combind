@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/olivere/elastic/v7"
+	"github.com/ourstudio-se/combind/utils/keyutils"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -116,7 +117,7 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 	for _, d := range sb {
 		for _, key := range d.Matches {
 			dCopy := *d
-			dCopy.HashMatch = key.Hash()
+			dCopy.HashMatch = keyutils.Hash(key)
 			dCopy.Match = key
 			dCopy.Matches = []Key{}
 			req := elastic.NewBulkIndexRequest().Index(originIdx).Id(fmt.Sprintf("%s_%s_%s", d.Type, d.Key, dCopy.HashMatch)).Doc(dCopy)

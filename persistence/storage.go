@@ -2,8 +2,6 @@ package persistence
 
 import (
 	"context"
-	"crypto/md5"
-	"fmt"
 )
 
 //SearchBoxStorage interface
@@ -35,27 +33,14 @@ type Value struct {
 }
 
 //Key to be used in matches, might need to be extended later
-type Key struct {
-	Policy     string `json:"POLICY,omitempty"`
-	SpecMarket string `json:"SPEC_MARKET,omitempty"`
-	Pno12      string `json:"PNO12,omitempty"`
-	Week       string `json:"WEEK,omitempty"`
-}
+type Key = map[string]string
 
 //SearchBox is the searchable model to be used
 type SearchBox struct {
 	Key       string                 `json:"key"`
 	Type      string                 `json:"type"`
 	Props     map[string]interface{} `json:"props"`
-	Matches   []Key                  `json:"matches"`
-	Match     Key                    `json:"match"`
-	HashMatch string                 `json:"hash_match"`
-}
-
-// Hash generates a hash of this key object
-func (k *Key) Hash() string {
-	h := md5.New()
-	h.Write([]byte(fmt.Sprintf("%v", k)))
-
-	return fmt.Sprintf("%x", h.Sum(nil))
+	Matches   []Key
+	Match     Key    `json:"match"`
+	HashMatch string `json:"hash_match"`
 }

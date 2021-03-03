@@ -13,7 +13,7 @@ type QueryBuilder = func(builder *reveald.QueryBuilder)
 type Component interface {
 	Type() string
 	Children() []Component
-	Build(context.Context) ([]*persistence.SearchBox, error)
+	Build(ctx context.Context, rebuild bool) ([]*persistence.SearchBox, error)
 	BuildQuery(builder *reveald.QueryBuilder)
 }
 
