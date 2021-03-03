@@ -1,4 +1,4 @@
-package combined
+package combind
 
 import (
 	"context"
