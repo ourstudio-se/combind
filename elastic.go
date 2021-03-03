@@ -177,7 +177,7 @@ func (s *elasticComponentStorage) Find(ctx context.Context, componentType string
 
 	results := []BackendComponent{}
 	for s := range scroll(s.client, ctx, componentType, s.componentIndex) {
-		var typ Component
+		var typ BackendComponent
 		for _, h := range s.Each(reflect.TypeOf(typ)) {
 			results = append(results, h.(BackendComponent))
 		}
