@@ -71,7 +71,7 @@ func (s *elasticSearchBoxStorage) Init(ctx context.Context) error {
 func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string) ([]SearchBox, error) {
 
 	results := []SearchBox{}
-	for s := range scroll(s.client, ctx, s.searchIndex, boxType) {
+	for s := range scroll(s.client, ctx, boxType, s.searchIndex) {
 		var typ Component
 		for _, h := range s.Each(reflect.TypeOf(typ)) {
 			results = append(results, h.(SearchBox))
@@ -176,7 +176,7 @@ func NewElasticComponentStorage(client *elastic.Client, componentIndex string) C
 func (s *elasticComponentStorage) Find(ctx context.Context, componentType string) ([]BackendComponent, error) {
 
 	results := []BackendComponent{}
-	for s := range scroll(s.client, ctx, s.componentIndex, componentType) {
+	for s := range scroll(s.client, ctx, componentType, s.componentIndex) {
 		var typ Component
 		for _, h := range s.Each(reflect.TypeOf(typ)) {
 			results = append(results, h.(BackendComponent))
