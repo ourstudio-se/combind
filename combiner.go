@@ -1,4 +1,4 @@
-package graph
+package combined
 
 import (
 	"context"
