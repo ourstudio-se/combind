@@ -6,6 +6,5 @@ require (
 	github.com/google/go-cmp v0.5.4
 	github.com/olivere/elastic/v7 v7.0.22
 	github.com/reveald/reveald v0.0.0-20201127082602-536c61456ca8
-	github.com/sirupsen/logrus v1.4.2
-	golang.org/x/sys v0.0.0-20190813064441-fde4db37ae7a // indirect
+	github.com/sirupsen/logrus v1.8.0
 )
