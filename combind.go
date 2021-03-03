@@ -55,7 +55,7 @@ func (g *Combind) ComponentTypes() []string {
 }
 
 //Save the graph to the provided storage
-func (g *Combind) Save(ctx context.Context) ([]*SearchBox, error) {
+func (g *Combind) Save(ctx context.Context) error {
 
 	logTime := func(part string, start time.Time) {
 		end := time.Now()
@@ -69,13 +69,18 @@ func (g *Combind) Save(ctx context.Context) ([]*SearchBox, error) {
 		log.Debugf("Running %s", typ)
 		result, err := comp.Build(ctx, true)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		logTime(typ, start)
 		results = append(results, result...)
 	}
-	return results, nil
+
+	if err := g.metadataStorage.Save(ctx, results...); err != nil {
+		log.Error("Error saving", err)
+		return err
+	}
+	return nil
 }
 
 // Update recomputes the updates for the graph
