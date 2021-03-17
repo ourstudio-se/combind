@@ -1,7 +1,6 @@
 package combind
 
 import (
-	"reflect"
 	"sync"
 
 	log "github.com/sirupsen/logrus"
@@ -104,106 +103,4 @@ func DependencyMerge(results chan *Combination, dependencies ...[]*SearchBox) ch
 	}
 
 	return DependencyMerge(newResults, dependencies[2:]...)
-}
-
-func MutuallyExclusive(dependencies ...[]*SearchBox) bool {
-	exists := make(map[string]bool)
-
-	for _, dependency := range dependencies {
-		fields := Dependencies(dependency[0].Matches[0])
-		for _, f := range fields {
-			if exists[f] {
-				return false
-			}
-			exists[f] = true
-		}
-
-	}
-
-	return true
-}
-
-func recursiveComb(op SearchBox, ch chan Combination, dep2 ...[]*SearchBox) {}
-
-func createMECombinations(op SearchBox, ch chan Combination, dep2 ...[]*SearchBox) {
-
-	keys := op.Matches
-	types1 := map[string]*SearchBox{}
-	types1[op.Type] = &op
-
-	if len(dep2) == 1 {
-		for _, t2 := range dep2 {
-			for _, t3 := range t2 {
-				keys = MergeArr(keys, t3.Matches)
-				types1[t3.Type] = t3
-			}
-		}
-		ch <- Combination{
-			Types:   types1,
-			Matches: keys,
-		}
-	}
-	if len(dep2) == 2 {
-		for _, t2 := range dep2[0] {
-			types := map[string]*SearchBox{}
-			types[op.Type] = &op
-			t2cop := &t2
-			innerKeys := MergeArr(keys, t2.Matches)
-			types[t2.Type] = *t2cop
-			for _, t3 := range dep2[1] {
-				k := MergeArr(innerKeys, t3.Matches)
-				t3cop := &t3
-				types[t3.Type] = *t3cop
-				ch <- Combination{
-					Types:   types,
-					Matches: k,
-				}
-			}
-		}
-
-	}
-
-	if len(dep2) > 2 {
-		return
-
-	}
-
-}
-
-func createNonMECombinations(op SearchBox, ch chan Combination, dep2 ...[]*SearchBox) {
-
-	keys := op.Matches
-
-	types := map[string]*SearchBox{}
-
-	types[op.Type] = &op
-
-	for _, t2 := range dep2 {
-		for _, t3 := range t2 {
-			keys = IntersectArr(keys, t3.Matches)
-			types[t3.Type] = t3
-		}
-
-	}
-	ch <- Combination{
-		Types:   types,
-		Matches: keys,
-	}
-
-}
-
-func Dependencies(mat Key) []string {
-	result := []string{}
-
-	val := reflect.ValueOf(mat)
-
-	for i := 0; i < val.NumField(); i++ {
-		f := val.Field(i)
-
-		if f.Interface() != "" {
-			result = append(result, val.Type().Field(i).Name)
-		}
-	}
-
-	return result
 }

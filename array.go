@@ -2,7 +2,6 @@ package combind
 
 import (
 	"encoding/json"
-	"sync"
 )
 
 func MergeArr(m1 []Key, m2 []Key) []Key {
@@ -82,56 +81,4 @@ func DedupKeys(d []Key) []Key {
 	}
 
 	return matches
-}
-
-type SafeArray struct {
-	v   []Key
-	mux sync.Mutex
-}
-
-// IntersectArr Merges list of keys only if they share they same property on the key they av in common
-func IntersectArr(a []Key, b []Key) []Key {
-	//c := []Key{}
-	combinations := make(chan Key, len(a))
-	var wg sync.WaitGroup
-
-	for _, item1 := range a {
-		wg.Add(1)
-		go func(item1 Key) {
-			defer wg.Done()
-			for _, item2 := range b {
-
-				// If keys are not shared, do not merge
-
-				match := false
-				for k1, v1 := range item1 {
-					for k2, v2 := range item2 {
-						if k1 != k2 {
-							continue
-						}
-						if v1 != "" && v1 == v2 {
-							match = true
-						}
-					}
-				}
-
-				if match == true {
-					if k, ok := MergeKey(item1, item2); ok {
-						combinations <- k
-					}
-
-				}
-			}
-		}(item1)
-	}
-	go func() {
-		wg.Wait()
-		close(combinations)
-	}()
-
-	result := []Key{}
-	for c := range combinations {
-		result = append(result, c)
-	}
-	return DedupKeys(result)
 }
