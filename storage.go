@@ -15,6 +15,7 @@ type SearchBoxStorage interface {
 type ComponentStorage interface {
 	Find(ctx context.Context, componentType string) ([]BackendComponent, error)
 	Save(ctx context.Context, c ...*BackendComponent) error
+	Delete(ctx context.Context, c ...*BackendComponent) error
 }
 
 // BackendComponent ...

@@ -188,14 +188,28 @@ func (s *elasticComponentStorage) Find(ctx context.Context, componentType string
 
 func (s *elasticComponentStorage) Save(ctx context.Context, c ...*BackendComponent) error {
 	bp, err := elastic.NewBulkProcessorService(s.client).Do(ctx)
-	defer bp.Close()
 	if err != nil {
-		log.Error("Failed to create bulkprocessor")
+		return err
 	}
+	defer bp.Close()
 
 	for _, d := range c {
 		req := elastic.NewBulkIndexRequest().Index(s.componentIndex).Id(fmt.Sprintf("%s_%s", d.Type, d.Code)).Doc(d)
 		bp.Add(req)
+	}
+
+	return bp.Flush()
+}
+
+func (s *elasticComponentStorage) Delete(ctx context.Context, c ...*BackendComponent) error {
+	bp, err := elastic.NewBulkProcessorService(s.client).Do(ctx)
+	if err != nil {
+		return err
+	}
+	defer bp.Close()
+
+	for _, d := range c {
+		bp.Add(elastic.NewBulkDeleteRequest().Index(s.componentIndex).Id(fmt.Sprintf("%s_%s", d.Type, d.Code)))
 	}
 
 	return bp.Flush()
