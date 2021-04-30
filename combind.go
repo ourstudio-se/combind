@@ -188,5 +188,13 @@ func (combiner *Combind) Process(builder *reveald.QueryBuilder, next reveald.Fea
 }
 
 func (combiner *Combind) handle(result *reveald.Result) (*reveald.Result, error) {
-	return result, nil
+	baseResult := result
+	for _, c := range combiner.components {
+		br, err := c.Handle(baseResult)
+		baseResult = br
+		if err != nil {
+			return nil, err
+		}
+	}
+	return baseResult, nil
 }
