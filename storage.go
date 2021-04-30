@@ -34,7 +34,7 @@ type Value struct {
 }
 
 //Key to be used in matches, might need to be extended later
-type Key = map[string]string
+type Key = map[string]interface{}
 
 //SearchBox is the searchable model to be used
 type SearchBox struct {

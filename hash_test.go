@@ -9,11 +9,11 @@ import (
 )
 
 func TestWith2ValuesEquals(t *testing.T) {
-	map1 := map[string]string{
+	map1 := map[string]interface{}{
 		"k1": "v1",
 		"k2": "v2",
 	}
-	map2 := map[string]string{
+	map2 := map[string]interface{}{
 		"k1": "v1",
 		"k2": "v2",
 	}
@@ -24,8 +24,8 @@ func TestWith2ValuesEquals(t *testing.T) {
 }
 
 func TestWithAnyNumberOfValuesEquals(t *testing.T) {
-	map1 := map[string]string{}
-	map2 := map[string]string{}
+	map1 := map[string]interface{}{}
+	map2 := map[string]interface{}{}
 
 	for i := 0; i < 1000; i++ {
 		map1[fmt.Sprintf("%d", i)] = fmt.Sprintf("%d", i)
@@ -39,11 +39,11 @@ func TestWithAnyNumberOfValuesEquals(t *testing.T) {
 }
 
 func TestNotEqualWhenDifferentNumberOfParams(t *testing.T) {
-	map1 := map[string]string{
+	map1 := map[string]interface{}{
 		"k1": "v1",
 		"k2": "v2",
 	}
-	map2 := map[string]string{
+	map2 := map[string]interface{}{
 		"k1": "v1",
 	}
 
@@ -53,11 +53,11 @@ func TestNotEqualWhenDifferentNumberOfParams(t *testing.T) {
 }
 
 func TestNotEqualWhenSameNumberOfParams(t *testing.T) {
-	map1 := map[string]string{
+	map1 := map[string]interface{}{
 		"k1": "v1",
 		"k2": "v2",
 	}
-	map2 := map[string]string{
+	map2 := map[string]interface{}{
 		"k1": "v1",
 		"k2": "v22",
 	}

@@ -71,7 +71,7 @@ func MergeKey(m1 Key, m2 Key) (Key, bool) {
 }
 
 func DedupKeys(d []Key) []Key {
-	dedupMatches := map[string]map[string]string{}
+	dedupMatches := map[string]map[string]interface{}{}
 	for _, match := range d {
 		dedupMatches[Hash(match)] = match
 	}
