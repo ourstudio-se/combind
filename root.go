@@ -20,6 +20,7 @@ type RootComponent struct {
 	modifiers       []Modifier
 	resultModifiers []ResultModifier
 	queryBuilder    QueryBuilder
+	handler         Handler
 }
 
 type RootConfiguration func(*RootComponent)
@@ -42,6 +43,12 @@ func WithRootQuery(queryBuilder QueryBuilder) RootConfiguration {
 	}
 }
 
+func WithRootHandler(handler Handler) RootConfiguration {
+	return func(rc *RootComponent) {
+		rc.handler = handler
+	}
+}
+
 func NewRoot(typ string, storage ComponentStorage, config ...RootConfiguration) *RootComponent {
 	rc := &RootComponent{
 		storage:   storage,
@@ -50,6 +57,9 @@ func NewRoot(typ string, storage ComponentStorage, config ...RootConfiguration) 
 		modifiers: []Modifier{},
 		queryBuilder: func(builder *reveald.QueryBuilder) {
 			//default do nothing, i.e does not expose
+		},
+		handler: func(result *reveald.Result) (*reveald.Result, error) {
+			return result, nil
 		},
 	}
 
@@ -123,6 +133,10 @@ func (rc *RootComponent) Build(ctx context.Context, rebuild bool) ([]*SearchBox,
 
 func (rc *RootComponent) BuildQuery(builder *reveald.QueryBuilder) {
 	rc.queryBuilder(builder)
+}
+
+func (rc *RootComponent) Handle(result *reveald.Result) (*reveald.Result, error) {
+	return rc.handler(result)
 }
 
 func merge(m1 map[string]interface{}, m2 map[string]interface{}) map[string]interface{} {

@@ -13,6 +13,7 @@ type Component interface {
 	Children() []Component
 	Build(ctx context.Context, rebuild bool) ([]*SearchBox, error)
 	BuildQuery(builder *reveald.QueryBuilder)
+	Handle(result *reveald.Result) (*reveald.Result, error)
 }
 
 type SearchableComponent interface {

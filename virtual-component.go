@@ -19,6 +19,7 @@ type VirtualComponent struct {
 	maxNrMatches  int
 	props         map[string]interface{}
 	queryBuilder  QueryBuilder
+	handler       Handler
 }
 
 type Combination struct {
@@ -70,6 +71,14 @@ func WithQuery(queryBuilder QueryBuilder) VirtualComponentConfiguration {
 	}
 }
 
+type Handler = func(result *reveald.Result) (*reveald.Result, error)
+
+func WithHandler(handler Handler) VirtualComponentConfiguration {
+	return func(vc *VirtualComponent) {
+		vc.handler = handler
+	}
+}
+
 func (vc *VirtualComponent) defaultNoMappingRule(combination *Combination) (*SearchBox, bool) {
 
 	return &SearchBox{
@@ -90,6 +99,9 @@ func NewVirtualComponent(typ string, combiner Combiner, cfg ...VirtualComponentC
 		props:        map[string]interface{}{},
 		queryBuilder: func(builder *reveald.QueryBuilder) {
 
+		},
+		handler: func(result *reveald.Result) (*reveald.Result, error) {
+			return result, nil
 		},
 	}
 
@@ -226,4 +238,8 @@ func (vc *VirtualComponent) Build(ctx context.Context, rebuild bool) ([]*SearchB
 
 func (vc *VirtualComponent) BuildQuery(builder *reveald.QueryBuilder) {
 	vc.queryBuilder(builder)
+}
+
+func (vc *VirtualComponent) Handle(result *reveald.Result) (*reveald.Result, error) {
+	return vc.handler(result)
 }

@@ -6,7 +6,7 @@ import (
 )
 
 // Hash generates a hash of this key object
-func Hash(key map[string]string) string {
+func Hash(key map[string]interface{}) string {
 	h := md5.New()
 	h.Write([]byte(fmt.Sprintf("%v", key)))
 

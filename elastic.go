@@ -216,7 +216,7 @@ func (s *elasticComponentStorage) Delete(ctx context.Context, c ...*BackendCompo
 }
 
 func scroll(client *elastic.Client, ctx context.Context, typ, index string) chan *elastic.SearchResult {
-	scroller := client.Scroll(index).Size(1000).Query(elastic.NewBoolQuery().Must(
+	scroller := client.Scroll(index).Size(10000).Query(elastic.NewBoolQuery().Must(
 		elastic.NewMatchQuery("type.keyword", typ),
 	))
 
