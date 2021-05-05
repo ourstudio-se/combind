@@ -13,7 +13,7 @@ import (
 type Combind struct {
 	components       map[string]Component
 	componentStorage ComponentStorage
-	metadataStorage  SearchBoxStorage
+	searchStorage    SearchBoxStorage
 	roots            map[string][]string
 }
 
@@ -30,7 +30,7 @@ func New(
 
 	g := &Combind{
 		componentStorage: componentStorage,
-		metadataStorage:  combindStorage,
+		searchStorage:    combindStorage,
 		components:       map[string]Component{},
 		roots:            map[string][]string{},
 	}
@@ -76,7 +76,7 @@ func (g *Combind) Save(ctx context.Context) error {
 		results = append(results, result...)
 	}
 
-	if err := g.metadataStorage.Save(ctx, results...); err != nil {
+	if err := g.searchStorage.Save(ctx, results...); err != nil {
 		log.Error("Error saving", err)
 		return err
 	}
@@ -96,7 +96,7 @@ func (combiner *Combind) Update(ctx context.Context, comps ...*BackendComponent)
 
 				if root == comp.Type {
 
-					boxes, err := combiner.metadataStorage.Find(ctx, key)
+					boxes, err := combiner.searchStorage.Find(ctx, key)
 					if err != nil {
 						return nil, err
 					}

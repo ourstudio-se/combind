@@ -220,7 +220,7 @@ func scroll(client *elastic.Client, ctx context.Context, typ, index string) chan
 		elastic.NewMatchQuery("type.keyword", typ),
 	))
 
-	results := make(chan *elastic.SearchResult)
+	results := make(chan *elastic.SearchResult, 3)
 	go func() {
 		defer close(results)
 		for {
