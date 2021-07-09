@@ -90,6 +90,7 @@ func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string) ([]S
 
 func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) error {
 	start := time.Now()
+
 	defer func() {
 		log.Debugf("indexing took %s ", time.Since(start))
 	}()
@@ -105,6 +106,17 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 			return err
 		}
 	}
+
+	ranTilCompletion := false
+
+	defer func() {
+		if ranTilCompletion {
+			return
+		}
+		if _, err := s.client.DeleteIndex(originIdx).Do(ctx); err != nil {
+			log.Errorf("Error while deleting new index %s", originIdx)
+		}
+	}()
 
 	bp, err := elastic.NewBulkProcessorService(s.client).Stats(true).Do(ctx)
 	if err != nil {
@@ -136,10 +148,6 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 	statsIndexed := bp.Stats().Indexed
 	if statsIndexed != indexed {
 		log.Errorf("Expected %d documents, but count returned %d", indexed, statsIndexed)
-		if _, err := s.client.DeleteIndex(originIdx).Do(ctx); err != nil {
-			log.Errorf("Error while deleting new index %s", originIdx)
-			return err
-		}
 		return fmt.Errorf("wrong number of documents indexed")
 	}
 	// roll alias
@@ -168,6 +176,7 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 		log.Warn(err)
 	}
 
+	ranTilCompletion = true
 	return nil
 }
 
