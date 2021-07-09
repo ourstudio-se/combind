@@ -153,10 +153,10 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 
 	idxToDelete := []string{}
 
-	for _, r := range r {
-		if r.Alias == s.searchIndex {
-			als = als.Remove(r.Index, r.Alias)
-			idxToDelete = append(idxToDelete, r.Index)
+	for _, row := range r {
+		if row.Alias == s.searchIndex {
+			als = als.Remove(row.Index, row.Alias)
+			idxToDelete = append(idxToDelete, row.Index)
 		}
 	}
 
@@ -164,7 +164,7 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 		return err
 	}
 
-	if _, err := elastic.NewIndicesDeleteService(s.client).Index(idxToDelete).Do(ctx); err != nil {
+	if _, err := s.client.DeleteIndex(idxToDelete...).Do(ctx); err != nil {
 		log.Warn(err)
 	}
 
