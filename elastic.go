@@ -16,6 +16,10 @@ type elasticSearchBoxStorage struct {
 	client      *elastic.Client
 	searchIndex string
 }
+type scrollResults struct {
+	data *elastic.SearchResult
+	err  error
+}
 
 func NewElasticSearchBoxStorage(client *elastic.Client, metaIndex string) SearchBoxStorage {
 	return &elasticSearchBoxStorage{
@@ -72,8 +76,11 @@ func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string) ([]S
 
 	results := []SearchBox{}
 	for s := range scroll(s.client, ctx, boxType, s.searchIndex) {
+		if s.err != nil {
+			return nil, s.err
+		}
 		var typ Component
-		for _, h := range s.Each(reflect.TypeOf(typ)) {
+		for _, h := range s.data.Each(reflect.TypeOf(typ)) {
 			results = append(results, h.(SearchBox))
 		}
 	}
@@ -100,10 +107,10 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 	}
 
 	bp, err := elastic.NewBulkProcessorService(s.client).Stats(true).Do(ctx)
-	defer bp.Close()
 	if err != nil {
 		log.Error("Failed to create bulkprocessor")
 	}
+	defer bp.Close()
 	log.Debugf("Start indexing %d items", len(sb))
 
 	indexed := int64(0)
@@ -129,8 +136,11 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 	statsIndexed := bp.Stats().Indexed
 	if statsIndexed != indexed {
 		log.Errorf("Expected %d documents, but count returned %d", indexed, statsIndexed)
-		s.client.DeleteIndex(originIdx).Do(ctx)
-		return fmt.Errorf("Wrong number of documents indexed")
+		if _, err := s.client.DeleteIndex(originIdx).Do(ctx); err != nil {
+			log.Errorf("Error while deleting new index %s", originIdx)
+			return err
+		}
+		return fmt.Errorf("wrong number of documents indexed")
 	}
 	// roll alias
 	as := elastic.NewCatAliasesService(s.client)
@@ -178,7 +188,10 @@ func (s *elasticComponentStorage) Find(ctx context.Context, componentType string
 	results := []BackendComponent{}
 	for s := range scroll(s.client, ctx, componentType, s.componentIndex) {
 		var typ BackendComponent
-		for _, h := range s.Each(reflect.TypeOf(typ)) {
+		if s.err != nil {
+			return nil, s.err
+		}
+		for _, h := range s.data.Each(reflect.TypeOf(typ)) {
 			results = append(results, h.(BackendComponent))
 		}
 	}
@@ -215,12 +228,12 @@ func (s *elasticComponentStorage) Delete(ctx context.Context, c ...*BackendCompo
 	return bp.Flush()
 }
 
-func scroll(client *elastic.Client, ctx context.Context, typ, index string) chan *elastic.SearchResult {
+func scroll(client *elastic.Client, ctx context.Context, typ, index string) chan *scrollResults {
 	scroller := client.Scroll(index).Size(10000).Query(elastic.NewBoolQuery().Must(
 		elastic.NewMatchQuery("type.keyword", typ),
 	))
 
-	results := make(chan *elastic.SearchResult, 3)
+	results := make(chan *scrollResults, 3)
 	go func() {
 		defer close(results)
 		for {
@@ -231,9 +244,14 @@ func scroll(client *elastic.Client, ctx context.Context, typ, index string) chan
 			}
 			if err != nil {
 				log.Warnf("Error while scrolling %v", err)
+				results <- &scrollResults{
+					err: err,
+				}
 				return
 			}
-			results <- r
+			results <- &scrollResults{
+				data: r,
+			}
 		}
 	}()
 	return results

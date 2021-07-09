@@ -126,7 +126,8 @@ func (combiner *Combind) Update(ctx context.Context, comps ...*BackendComponent)
 
 					for k, existingBox := range existingIndex {
 						if builtIndex[k] == nil {
-							deletedBoxes = append(deletedBoxes, existingBox)
+							//todo: handle this
+							_ = append(deletedBoxes, existingBox)
 						}
 					}
 				}

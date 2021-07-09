@@ -47,9 +47,7 @@ func WithDependency(comp ...Component) VirtualComponentConfiguration {
 
 func WithRule(rule ...Rule) VirtualComponentConfiguration {
 	return func(vc *VirtualComponent) {
-		for _, r := range rule {
-			vc.rules = append(vc.rules, r)
-		}
+		vc.rules = append(vc.rules, rule...)
 	}
 }
 
