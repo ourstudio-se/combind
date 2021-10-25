@@ -74,8 +74,14 @@ func (s *elasticSearchBoxStorage) Init(ctx context.Context) error {
 
 func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string) ([]SearchBox, error) {
 
+	bq := elastic.NewBoolQuery()
+
+	bq.Must(
+		elastic.NewTermQuery("type.keyword", boxType),
+	)
+
 	results := []SearchBox{}
-	for s := range scroll(s.client, ctx, boxType, s.searchIndex, map[string]interface{}{}) {
+	for s := range scroll(s.client, ctx, s.searchIndex, bq) {
 		if s.err != nil {
 			return nil, s.err
 		}
@@ -185,8 +191,14 @@ func NewElasticComponentStorage(client *elastic.Client, componentIndex string) C
 
 func (s *elasticComponentStorage) Find(ctx context.Context, componentType string) ([]BackendComponent, error) {
 
+	bq := elastic.NewBoolQuery()
+
+	bq.Must(
+		elastic.NewTermQuery("type.keyword", componentType),
+	)
+
 	results := []BackendComponent{}
-	for s := range scroll(s.client, ctx, componentType, s.componentIndex, map[string]interface{}{}) {
+	for s := range scroll(s.client, ctx, s.componentIndex, bq) {
 		var typ BackendComponent
 		if s.err != nil {
 			return nil, s.err
@@ -201,8 +213,20 @@ func (s *elasticComponentStorage) Find(ctx context.Context, componentType string
 
 func (s *elasticComponentStorage) Search(ctx context.Context, componentType string, props map[string]interface{}) ([]BackendComponent, error) {
 
+	bq := elastic.NewBoolQuery()
+
+	bq.Must(
+		elastic.NewTermQuery("type.keyword", componentType),
+	)
+
+	for k, v := range props {
+		bq.Must(
+			elastic.NewTermQuery(fmt.Sprintf("props.%s.keyword", k), v),
+		)
+	}
+
 	results := []BackendComponent{}
-	for s := range scroll(s.client, ctx, componentType, s.componentIndex, props) {
+	for s := range scroll(s.client, ctx, s.componentIndex, bq) {
 		var typ BackendComponent
 		if s.err != nil {
 			return nil, s.err
@@ -268,21 +292,9 @@ func (s *elasticComponentStorage) FilteredDelete(ctx context.Context, componentT
 
 }
 
-func scroll(client *elastic.Client, ctx context.Context, typ, index string, props map[string]interface{}) chan *scrollResults {
+func scroll(client *elastic.Client, ctx context.Context, index string, query elastic.Query) chan *scrollResults {
 
-	bq := elastic.NewBoolQuery()
-
-	bq.Must(
-		elastic.NewTermQuery("type.keyword", typ),
-	)
-
-	for k, v := range props {
-		bq.Must(
-			elastic.NewTermQuery(fmt.Sprintf("props.%s.keyword", k), v),
-		)
-	}
-
-	scroller := client.Scroll(index).Size(10000).Query(bq)
+	scroller := client.Scroll(index).Size(10000).Query(query)
 
 	results := make(chan *scrollResults, 3)
 	go func() {
