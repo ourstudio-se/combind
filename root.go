@@ -78,13 +78,13 @@ func (rc *RootComponent) Children() []Component {
 	return []Component{}
 }
 
-func (rc *RootComponent) Build(ctx context.Context, rebuild bool) ([]*SearchBox, error) {
+func (rc *RootComponent) Build(ctx context.Context, rebuild bool, withProps map[string]interface{}) ([]*SearchBox, error) {
 
 	if rc.build != nil && !rebuild {
 		return rc.build, nil
 	}
 
-	values, err := rc.storage.Find(ctx, rc.typ)
+	values, err := rc.storage.Search(ctx, rc.typ, withProps)
 	if err != nil {
 		return nil, err
 	}

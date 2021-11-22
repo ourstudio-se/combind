@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"regexp"
 	"time"
 
 	"github.com/olivere/elastic/v7"
@@ -14,65 +15,66 @@ import (
 
 type elasticSearchBoxStorage struct {
 	client      *elastic.Client
-	searchIndex string
+	searchIndex string //alias
 }
 type scrollResults struct {
 	data *elastic.SearchResult
 	err  error
 }
 
-func NewElasticSearchBoxStorage(client *elastic.Client, metaIndex string) SearchBoxStorage {
+func NewElasticSearchBoxStorage(client *elastic.Client, searchIndex string) SearchBoxStorage {
+
 	return &elasticSearchBoxStorage{
 		client:      client,
-		searchIndex: metaIndex,
+		searchIndex: searchIndex, //alias
 	}
 }
 
 func (s *elasticSearchBoxStorage) Init(ctx context.Context) error {
-	r, err := elastic.NewCatAliasesService(s.client).Do(ctx)
-	if err != nil {
-		return err
-	}
+	//r, err := elastic.NewCatAliasesService(s.client).Do(ctx)
+	//if err != nil {
+	//	return err
+	//}
 
-	isAlias := false
-	for _, r := range r {
-		if r.Alias == s.searchIndex {
-			isAlias = true
-			break
-		}
-	}
+	//isAlias := false
+	//for _, r := range r {
+	//	if r.Alias == s.searchIndex {
+	//		isAlias = true
+	//		break
+	//	}
+	//}
 
-	originIdx := fmt.Sprintf("%s-%d", s.searchIndex, time.Now().UTC().Unix())
-	if !isAlias {
-		//aliases is not yet setup
-		if _, err := s.client.CreateIndex(originIdx).Do(ctx); err != nil {
-			return err
-		}
+	//originIdx := fmt.Sprintf("%s-%d", s.searchIndex, time.Now().UTC().Unix())
+	//if !isAlias {
+	//	//aliases is not yet setup
+	//	if _, err := s.client.CreateIndex(originIdx).Do(ctx); err != nil {
+	//		return err
+	//	}
 
-		if _, err := s.client.GetMapping().Index(s.searchIndex).Do(ctx); err != nil {
-			return err
-		}
+	//	if _, err := s.client.GetMapping().Index(s.searchIndex).Do(ctx); err != nil {
+	//		return err
+	//	}
 
-		_, err := elastic.NewReindexService(s.client).SourceIndex(s.searchIndex).DestinationIndex(originIdx).Do(ctx)
-		if err != nil {
-			return err
-		}
+	//	_, err := elastic.NewReindexService(s.client).SourceIndex(s.searchIndex).DestinationIndex(originIdx).Do(ctx)
+	//	if err != nil {
+	//		return err
+	//	}
 
-		if _, err := s.client.DeleteIndex(s.searchIndex).Do(ctx); err != nil {
-			//this is not good
-			return err
-		}
+	//	if _, err := s.client.DeleteIndex(s.searchIndex).Do(ctx); err != nil {
+	//		//this is not good
+	//		return err
+	//	}
 
-		if _, err := elastic.NewAliasService(s.client).Add(originIdx, s.searchIndex).Do(ctx); err != nil {
-			// not so good either...
-			return err
-		}
-	}
+	//	if _, err := elastic.NewAliasService(s.client).Add(originIdx, s.searchIndex).Do(ctx); err != nil {
+	//		// not so good either...
+	//		return err
+	//	}
+	//}
 
 	return nil
 }
 
-func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string) ([]SearchBox, error) {
+func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string, index string) ([]SearchBox, error) {
 
 	bq := elastic.NewBoolQuery()
 
@@ -81,7 +83,7 @@ func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string) ([]S
 	)
 
 	results := []SearchBox{}
-	for s := range scroll(s.client, ctx, s.searchIndex, bq) {
+	for s := range scroll(s.client, ctx, index, bq) {
 		if s.err != nil {
 			return nil, s.err
 		}
@@ -94,12 +96,13 @@ func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string) ([]S
 	return results, nil
 }
 
-func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) error {
+func (s *elasticSearchBoxStorage) Save(ctx context.Context, index string, sb ...*SearchBox) error {
 	start := time.Now()
 	defer func() {
 		log.Debugf("indexing took %s ", time.Since(start))
 	}()
-	originIdx := fmt.Sprintf("%s-%d", s.searchIndex, time.Now().UTC().Unix())
+
+	originIdx := fmt.Sprintf("%s-%d", index, time.Now().UTC().Unix())
 
 	exists, err := s.client.IndexExists(originIdx).Do(ctx)
 	if err != nil {
@@ -160,8 +163,18 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 	idxToDelete := []string{}
 
 	for _, row := range r {
-		if row.Alias == s.searchIndex {
+		if row.Alias == index {
 			als = als.Remove(row.Index, row.Alias)
+			idxToDelete = append(idxToDelete, row.Index)
+		}
+	}
+
+	indexRegex := fmt.Sprintf("^%s-", index)
+	re := regexp.MustCompile(indexRegex)
+
+	for _, row := range r {
+		if row.Alias == s.searchIndex && re.MatchString(row.Index) {
+			als.Remove(row.Index, row.Alias)
 			idxToDelete = append(idxToDelete, row.Index)
 		}
 	}

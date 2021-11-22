@@ -55,7 +55,7 @@ func (g *Combind) ComponentTypes() []string {
 }
 
 //Save the graph to the provided storage
-func (g *Combind) Save(ctx context.Context) error {
+func (g *Combind) Save(ctx context.Context, withProps map[string]interface{}, index string) error {
 
 	logTime := func(part string, start time.Time) {
 		end := time.Now()
@@ -67,7 +67,7 @@ func (g *Combind) Save(ctx context.Context) error {
 	for typ, comp := range g.components {
 		start := time.Now()
 		log.Debugf("Running %s", typ)
-		result, err := comp.Build(ctx, true)
+		result, err := comp.Build(ctx, true, withProps)
 		if err != nil {
 			return err
 		}
@@ -76,7 +76,7 @@ func (g *Combind) Save(ctx context.Context) error {
 		results = append(results, result...)
 	}
 
-	if err := g.searchStorage.Save(ctx, results...); err != nil {
+	if err := g.searchStorage.Save(ctx, index, results...); err != nil {
 		log.Error("Error saving", err)
 		return err
 	}
@@ -84,7 +84,7 @@ func (g *Combind) Save(ctx context.Context) error {
 }
 
 // Update recomputes the updates for the graph
-func (combiner *Combind) Update(ctx context.Context, comps ...*BackendComponent) ([]*SearchBox, error) {
+func (combiner *Combind) Update(ctx context.Context, withProps map[string]interface{}, index string, comps ...*BackendComponent) ([]*SearchBox, error) {
 	deletedBoxes := []*SearchBox{}
 	updatedBoxes := []*SearchBox{}
 	createdBoxes := []*SearchBox{}
@@ -96,11 +96,11 @@ func (combiner *Combind) Update(ctx context.Context, comps ...*BackendComponent)
 
 				if root == comp.Type {
 
-					boxes, err := combiner.searchStorage.Find(ctx, key)
+					boxes, err := combiner.searchStorage.Find(ctx, key, index)
 					if err != nil {
 						return nil, err
 					}
-					builds, err := component.Build(ctx, true)
+					builds, err := component.Build(ctx, true, withProps)
 					if err != nil {
 						return nil, err
 					}

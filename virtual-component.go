@@ -126,7 +126,7 @@ func (vc *VirtualComponent) Children() []Component {
 	return children
 }
 
-func (vc *VirtualComponent) Build(ctx context.Context, rebuild bool) ([]*SearchBox, error) {
+func (vc *VirtualComponent) Build(ctx context.Context, rebuild bool, withProps map[string]interface{}) ([]*SearchBox, error) {
 
 	if vc.result != nil && !rebuild {
 		return vc.result, nil
@@ -134,7 +134,7 @@ func (vc *VirtualComponent) Build(ctx context.Context, rebuild bool) ([]*SearchB
 
 	builtDependencies := map[string][]*SearchBox{}
 	for typ, dependency := range vc.dependencies {
-		dependencyBuild, err := dependency.Build(ctx, false)
+		dependencyBuild, err := dependency.Build(ctx, false, withProps)
 		if err != nil {
 			return nil, err
 		}

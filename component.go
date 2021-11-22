@@ -11,7 +11,7 @@ type QueryBuilder = func(builder *reveald.QueryBuilder)
 type Component interface {
 	Type() string
 	Children() []Component
-	Build(ctx context.Context, rebuild bool) ([]*SearchBox, error)
+	Build(ctx context.Context, rebuild bool, withProps map[string]interface{}) ([]*SearchBox, error)
 	BuildQuery(builder *reveald.QueryBuilder)
 	Handle(result *reveald.Result) (*reveald.Result, error)
 }
