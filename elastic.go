@@ -102,7 +102,7 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, index string, sb ...
 		log.Debugf("indexing took %s ", time.Since(start))
 	}()
 
-	originIdx := fmt.Sprintf("%s-%d", index, time.Now().UTC().Unix())
+	originIdx := fmt.Sprintf("%s-%s-%d", s.searchIndex, index, time.Now().UTC().Unix())
 
 	exists, err := s.client.IndexExists(originIdx).Do(ctx)
 	if err != nil {
@@ -162,14 +162,7 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, index string, sb ...
 
 	idxToDelete := []string{}
 
-	for _, row := range r {
-		if row.Alias == index {
-			als = als.Remove(row.Index, row.Alias)
-			idxToDelete = append(idxToDelete, row.Index)
-		}
-	}
-
-	indexRegex := fmt.Sprintf("^%s-", index)
+	indexRegex := fmt.Sprintf("^%s-%s-", s.searchIndex, index)
 	re := regexp.MustCompile(indexRegex)
 
 	for _, row := range r {
