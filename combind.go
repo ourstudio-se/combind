@@ -18,8 +18,8 @@ type Combind struct {
 }
 
 type CombinerBuilder interface {
-	Update(ctx context.Context, comp ...*Component) ([]*SearchBox, error)
-	Save(ctx context.Context) ([]*SearchBox, error)
+	Update(ctx context.Context, withProps map[string]interface{}, index string, comps ...*BackendComponent) ([]*SearchBox, error)
+	Save(ctx context.Context, withProps map[string]interface{}, index string) error
 }
 
 // New for modeling the metadata
