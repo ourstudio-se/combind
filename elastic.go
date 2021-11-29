@@ -30,50 +30,6 @@ func NewElasticSearchBoxStorage(client *elastic.Client, searchIndex string) Sear
 	}
 }
 
-func (s *elasticSearchBoxStorage) Init(ctx context.Context) error {
-	//r, err := elastic.NewCatAliasesService(s.client).Do(ctx)
-	//if err != nil {
-	//	return err
-	//}
-
-	//isAlias := false
-	//for _, r := range r {
-	//	if r.Alias == s.searchIndex {
-	//		isAlias = true
-	//		break
-	//	}
-	//}
-
-	//originIdx := fmt.Sprintf("%s-%d", s.searchIndex, time.Now().UTC().Unix())
-	//if !isAlias {
-	//	//aliases is not yet setup
-	//	if _, err := s.client.CreateIndex(originIdx).Do(ctx); err != nil {
-	//		return err
-	//	}
-
-	//	if _, err := s.client.GetMapping().Index(s.searchIndex).Do(ctx); err != nil {
-	//		return err
-	//	}
-
-	//	_, err := elastic.NewReindexService(s.client).SourceIndex(s.searchIndex).DestinationIndex(originIdx).Do(ctx)
-	//	if err != nil {
-	//		return err
-	//	}
-
-	//	if _, err := s.client.DeleteIndex(s.searchIndex).Do(ctx); err != nil {
-	//		//this is not good
-	//		return err
-	//	}
-
-	//	if _, err := elastic.NewAliasService(s.client).Add(originIdx, s.searchIndex).Do(ctx); err != nil {
-	//		// not so good either...
-	//		return err
-	//	}
-	//}
-
-	return nil
-}
-
 func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string, index string) ([]SearchBox, error) {
 
 	bq := elastic.NewBoolQuery()

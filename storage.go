@@ -8,7 +8,6 @@ import (
 type SearchBoxStorage interface {
 	Find(ctx context.Context, boxType string, index string) ([]SearchBox, error)
 	Save(ctx context.Context, index string, dn ...*SearchBox) error
-	Init(ctx context.Context) error
 }
 
 //ComponentStorage interface
