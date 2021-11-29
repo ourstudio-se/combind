@@ -1,4 +1,3 @@
-//module github.com/GLindebyV/combind
 module github.com/ourstudio-se/combind
 
 go 1.15
