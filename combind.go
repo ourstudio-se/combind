@@ -11,10 +11,9 @@ import (
 
 //Combind for the current relationships
 type Combind struct {
-	components       map[string]Component
-	componentStorage ComponentStorage
-	searchStorage    SearchBoxStorage
-	roots            map[string][]string
+	components    map[string]Component
+	searchStorage SearchBoxStorage
+	roots         map[string][]string
 }
 
 type CombinerBuilder interface {
@@ -24,15 +23,13 @@ type CombinerBuilder interface {
 
 // New for modeling the metadata
 func New(
-	componentStorage ComponentStorage,
 	combindStorage SearchBoxStorage,
 	components ...Component) *Combind {
 
 	g := &Combind{
-		componentStorage: componentStorage,
-		searchStorage:    combindStorage,
-		components:       map[string]Component{},
-		roots:            map[string][]string{},
+		searchStorage: combindStorage,
+		components:    map[string]Component{},
+		roots:         map[string][]string{},
 	}
 
 	g.roots = map[string][]string{}

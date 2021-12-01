@@ -21,6 +21,7 @@ type RootComponent struct {
 	resultModifiers []ResultModifier
 	queryBuilder    QueryBuilder
 	handler         Handler
+	searchFilter    SearchFilter
 }
 
 type RootConfiguration func(*RootComponent)
@@ -49,6 +50,12 @@ func WithRootHandler(handler Handler) RootConfiguration {
 	}
 }
 
+func WithSearchFilter(searchFilter SearchFilter) RootConfiguration {
+	return func(rc *RootComponent) {
+		rc.searchFilter = searchFilter
+	}
+}
+
 func NewRoot(typ string, storage ComponentStorage, config ...RootConfiguration) *RootComponent {
 	rc := &RootComponent{
 		storage:   storage,
@@ -61,6 +68,7 @@ func NewRoot(typ string, storage ComponentStorage, config ...RootConfiguration) 
 		handler: func(result *reveald.Result) (*reveald.Result, error) {
 			return result, nil
 		},
+		searchFilter: make(SearchFilter),
 	}
 
 	for _, cfg := range config {
@@ -84,7 +92,7 @@ func (rc *RootComponent) Build(ctx context.Context, rebuild bool) ([]*SearchBox,
 		return rc.build, nil
 	}
 
-	values, err := rc.storage.Find(ctx, rc.typ)
+	values, err := rc.storage.Search(ctx, rc.typ, rc.searchFilter)
 	if err != nil {
 		return nil, err
 	}

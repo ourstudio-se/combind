@@ -4,20 +4,22 @@ import (
 	"context"
 )
 
+//SearchFilter ...
+type SearchFilter map[string]interface{}
+
 //SearchBoxStorage interface
 type SearchBoxStorage interface {
 	Find(ctx context.Context, boxType string) ([]SearchBox, error)
 	Save(ctx context.Context, dn ...*SearchBox) error
-	Init(ctx context.Context) error
 }
 
 //ComponentStorage interface
 type ComponentStorage interface {
 	Find(ctx context.Context, componentType string) ([]BackendComponent, error)
-	Search(ctx context.Context, componentType string, props map[string]interface{}) ([]BackendComponent, error)
+	Search(ctx context.Context, componentType string, searchFilter SearchFilter) ([]BackendComponent, error)
 	Save(ctx context.Context, c ...*BackendComponent) error
 	Delete(ctx context.Context, c ...*BackendComponent) error
-	FilteredDelete(ctx context.Context, componentType string, props map[string]interface{}) (int, error)
+	FilteredDelete(ctx context.Context, componentType string, searchFilter SearchFilter) (int, error)
 }
 
 // BackendComponent ...
