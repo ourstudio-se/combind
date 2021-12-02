@@ -17,7 +17,6 @@ type Combind struct {
 }
 
 type CombinerBuilder interface {
-	//Update(ctx context.Context, comp ...*Component) ([]*SearchBox, error)
 	Update(ctx context.Context, comps ...*BackendComponent) ([]*SearchBox, error)
 	Save(ctx context.Context) error
 }

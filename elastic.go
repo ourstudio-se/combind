@@ -24,9 +24,6 @@ type scrollResults struct {
 
 func NewElasticSearchBoxStorage(client *elastic.Client, alias string, indexPrefix string) SearchBoxStorage {
 
-	//alias: rule-set-resolver-search-{{specmarket}}
-	//index: rule-set-resolver-{{spec-market}}-{{time}}
-
 	return &elasticSearchBoxStorage{
 		client:      client,
 		searchIndex: alias,
