@@ -16,9 +16,56 @@ type Combind struct {
 	roots         map[string][]string
 }
 
+type CombindFrontend struct {
+	components map[string]Component
+	roots      map[string][]string
+}
+
 type CombinerBuilder interface {
 	Update(ctx context.Context, comps ...*BackendComponent) ([]*SearchBox, error)
 	Save(ctx context.Context) error
+}
+
+func NewCombindFrontend(components ...Component) *CombindFrontend {
+
+	g := &CombindFrontend{
+		components: map[string]Component{},
+		roots:      map[string][]string{},
+	}
+
+	for _, c := range components {
+		g.roots[c.Type()] = getComponentRoots(c)
+		g.components[c.Type()] = c
+	}
+
+	return g
+}
+
+func (combiner *CombindFrontend) Process(builder *reveald.QueryBuilder, next reveald.FeatureFunc) (*reveald.Result, error) {
+
+	for _, c := range combiner.components {
+		c.BuildQuery(builder)
+	}
+
+	builder.Selection().Update(reveald.WithPageSize(9999))
+	r, err := next(builder)
+	if err != nil {
+		return nil, err
+	}
+
+	return combiner.handle(r)
+}
+
+func (combiner *CombindFrontend) handle(result *reveald.Result) (*reveald.Result, error) {
+	baseResult := result
+	for _, c := range combiner.components {
+		br, err := c.Handle(baseResult)
+		baseResult = br
+		if err != nil {
+			return nil, err
+		}
+	}
+	return baseResult, nil
 }
 
 // New for modeling the metadata
@@ -168,31 +215,4 @@ func getComponentRoots(comp Component) []string {
 
 func (combiner *Combind) Name() string {
 	return "Graph"
-}
-
-func (combiner *Combind) Process(builder *reveald.QueryBuilder, next reveald.FeatureFunc) (*reveald.Result, error) {
-
-	for _, c := range combiner.components {
-		c.BuildQuery(builder)
-	}
-
-	builder.Selection().Update(reveald.WithPageSize(9999))
-	r, err := next(builder)
-	if err != nil {
-		return nil, err
-	}
-
-	return combiner.handle(r)
-}
-
-func (combiner *Combind) handle(result *reveald.Result) (*reveald.Result, error) {
-	baseResult := result
-	for _, c := range combiner.components {
-		br, err := c.Handle(baseResult)
-		baseResult = br
-		if err != nil {
-			return nil, err
-		}
-	}
-	return baseResult, nil
 }
