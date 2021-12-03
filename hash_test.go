@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ourstudio-se/combind"
+	"github.com/ourstudio-se/combind/v2"
 	"github.com/stretchr/testify/assert"
 )
 

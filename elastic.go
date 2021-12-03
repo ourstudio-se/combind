@@ -15,61 +15,20 @@ import (
 type elasticSearchBoxStorage struct {
 	client      *elastic.Client
 	searchIndex string
+	indexPrefix string
 }
 type scrollResults struct {
 	data *elastic.SearchResult
 	err  error
 }
 
-func NewElasticSearchBoxStorage(client *elastic.Client, metaIndex string) SearchBoxStorage {
+func NewElasticSearchBoxStorage(client *elastic.Client, alias string, indexPrefix string) SearchBoxStorage {
+
 	return &elasticSearchBoxStorage{
 		client:      client,
-		searchIndex: metaIndex,
+		searchIndex: alias,
+		indexPrefix: indexPrefix,
 	}
-}
-
-func (s *elasticSearchBoxStorage) Init(ctx context.Context) error {
-	r, err := elastic.NewCatAliasesService(s.client).Do(ctx)
-	if err != nil {
-		return err
-	}
-
-	isAlias := false
-	for _, r := range r {
-		if r.Alias == s.searchIndex {
-			isAlias = true
-			break
-		}
-	}
-
-	originIdx := fmt.Sprintf("%s-%d", s.searchIndex, time.Now().UTC().Unix())
-	if !isAlias {
-		//aliases is not yet setup
-		if _, err := s.client.CreateIndex(originIdx).Do(ctx); err != nil {
-			return err
-		}
-
-		if _, err := s.client.GetMapping().Index(s.searchIndex).Do(ctx); err != nil {
-			return err
-		}
-
-		_, err := elastic.NewReindexService(s.client).SourceIndex(s.searchIndex).DestinationIndex(originIdx).Do(ctx)
-		if err != nil {
-			return err
-		}
-
-		if _, err := s.client.DeleteIndex(s.searchIndex).Do(ctx); err != nil {
-			//this is not good
-			return err
-		}
-
-		if _, err := elastic.NewAliasService(s.client).Add(originIdx, s.searchIndex).Do(ctx); err != nil {
-			// not so good either...
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (s *elasticSearchBoxStorage) Find(ctx context.Context, boxType string) ([]SearchBox, error) {
@@ -99,13 +58,13 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 	defer func() {
 		log.Debugf("indexing took %s ", time.Since(start))
 	}()
-	originIdx := fmt.Sprintf("%s-%d", s.searchIndex, time.Now().UTC().Unix())
+	originIdx := fmt.Sprintf("%s-%d", s.indexPrefix, time.Now().UTC().Unix())
 
+	// Check if index exists. If not, create it
 	exists, err := s.client.IndexExists(originIdx).Do(ctx)
 	if err != nil {
 		return err
 	}
-
 	if !exists {
 		if _, err := s.client.CreateIndex(originIdx).Do(ctx); err != nil {
 			return err
@@ -211,7 +170,7 @@ func (s *elasticComponentStorage) Find(ctx context.Context, componentType string
 	return results, nil
 }
 
-func (s *elasticComponentStorage) Search(ctx context.Context, componentType string, props map[string]interface{}) ([]BackendComponent, error) {
+func (s *elasticComponentStorage) Search(ctx context.Context, componentType string, searchFilter SearchFilter) ([]BackendComponent, error) {
 
 	bq := elastic.NewBoolQuery()
 
@@ -219,7 +178,7 @@ func (s *elasticComponentStorage) Search(ctx context.Context, componentType stri
 		elastic.NewTermQuery("type.keyword", componentType),
 	)
 
-	for k, v := range props {
+	for k, v := range searchFilter {
 		bq.Must(
 			elastic.NewTermQuery(fmt.Sprintf("props.%s.keyword", k), v),
 		)
@@ -268,7 +227,7 @@ func (s *elasticComponentStorage) Delete(ctx context.Context, c ...*BackendCompo
 	return bp.Flush()
 }
 
-func (s *elasticComponentStorage) FilteredDelete(ctx context.Context, componentType string, props map[string]interface{}) (int, error) {
+func (s *elasticComponentStorage) FilteredDelete(ctx context.Context, componentType string, searchFilter SearchFilter) (int, error) {
 
 	bq := elastic.NewBoolQuery()
 
@@ -276,7 +235,7 @@ func (s *elasticComponentStorage) FilteredDelete(ctx context.Context, componentT
 		elastic.NewTermQuery("type.keyword", componentType),
 	)
 
-	for k, v := range props {
+	for k, v := range searchFilter {
 		bq.Must(
 			elastic.NewTermQuery(fmt.Sprintf("props.%s.keyword", k), v),
 		)
@@ -293,7 +252,6 @@ func (s *elasticComponentStorage) FilteredDelete(ctx context.Context, componentT
 }
 
 func scroll(client *elastic.Client, ctx context.Context, index string, query elastic.Query) chan *scrollResults {
-
 	scroller := client.Scroll(index).Size(10000).Query(query)
 
 	results := make(chan *scrollResults, 3)
