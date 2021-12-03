@@ -1,4 +1,4 @@
-module github.com/ourstudio-se/combind
+module github.com/ourstudio-se/combind/v2
 
 go 1.15
 
