@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/olivere/elastic/v7"
 
 	log "github.com/sirupsen/logrus"
@@ -58,7 +59,7 @@ func (s *elasticSearchBoxStorage) Save(ctx context.Context, sb ...*SearchBox) er
 	defer func() {
 		log.Debugf("indexing took %s ", time.Since(start))
 	}()
-	originIdx := fmt.Sprintf("%s-%d", s.indexPrefix, time.Now().UTC().Unix())
+	originIdx := fmt.Sprintf("%s-%d-%s", s.indexPrefix, time.Now().UTC().Unix(), uuid.New().String())
 
 	// Check if index exists. If not, create it
 	exists, err := s.client.IndexExists(originIdx).Do(ctx)
